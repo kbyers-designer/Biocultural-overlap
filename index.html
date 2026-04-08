@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Biocultural Overlap Explorer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <style>
+    :root, [data-theme="light"] {
+      --color-bg: #f7f6f2;
+      --color-surface: #f9f8f5;
+      --color-surface-2: #fbfbf9;
+      --color-surface-offset: #f3f0ec;
+      --color-border: #d4d1ca;
+      --color-text: #28251d;
+      --color-text-muted: #6e6b65;
+      --color-text-faint: #9f9b94;
+      --color-text-inverse: #f9f8f4;
+      --color-primary: #01696f;
+      --color-primary-hover: #0c4e54;
+      --color-primary-highlight: #cedcd8;
+      --color-gold: #c48912;
+      --color-coral: #c15e44;
+      --color-purple: #7056b8;
+      --shadow-sm: 0 1px 2px rgba(20,18,14,.06);
+      --shadow-md: 0 8px 24px rgba(20,18,14,.08);
+      --radius-sm: .5rem;
+      --radius-md: .9rem;
+      --radius-lg: 1.25rem;
+      --radius-xl: 1.75rem;
+      --space-2: .5rem; --space-3: .75rem; --space-4: 1rem; --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem; --space-10: 2.5rem; --space-12: 3rem; --space-16: 4rem;
+      --text-xs: clamp(.75rem,.72rem + .15vw,.875rem);
+      --text-sm: clamp(.875rem,.84rem + .2vw,1rem);
+      --text-base: clamp(1rem,.97rem + .18vw,1.1rem);
+      --text-lg: clamp(1.125rem,1rem + .5vw,1.4rem);
+      --text-xl: clamp(1.55rem,1.2rem + 1vw,2.2rem);
+      --text-2xl: clamp(2.2rem,1.5rem + 2vw,3.8rem);
+      --font-display: 'Instrument Serif', Georgia, serif;
+      --font-body: 'Inter', system-ui, sans-serif;
+    }
+    [data-theme="dark"] {
+      --color-bg: #171614;
+      --color-surface: #1c1b19;
+      --color-surface-2: #23211f;
+      --color-surface-offset: #2c2926;
+      --color-border: #3a3732;
+      --color-text: #d9d5cf;
+      --color-text-muted: #a09b93;
+      --color-text-faint: #726d66;
+      --color-text-inverse: #181715;
+      --color-primary: #5aa2ab;
+      --color-primary-hover: #78b7bf;
+      --color-primary-highlight: #233436;
+      --color-gold: #e2ad3c;
+      --color-coral: #d07c62;
+      --color-purple: #9e86dc;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,.22);
+      --shadow-md: 0 10px 28px rgba(0,0,0,.34);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      line-height: 1.55;
+      background: radial-gradient(circle at top left, color-mix(in srgb, var(--color-primary) 10%, transparent), transparent 30%), var(--color-bg);
+      color: var(--color-text);
+    }
+    button, input { font: inherit; }
+    .shell { width: min(1400px, calc(100% - 2rem)); margin: 0 auto; }
+    header {
+      position: sticky; top: 0; z-index: 50;
+      backdrop-filter: blur(18px);
+      background: color-mix(in srgb, var(--color-bg) 84%, transparent);
+      border-bottom: 1px solid color-mix(in srgb, var(--color-text) 12%, transparent);
+    }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between; gap: var(--space-4);
+      padding: var(--space-4) 0;
+    }
+    .brand { display:flex; align-items:center; gap: .9rem; }
+    .logo {
+      width: 42px; height: 42px; border-radius: 50%; display:grid; place-items:center;
+      background: linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-gold) 50%, var(--color-primary)));
+      color: white; box-shadow: var(--shadow-md);
+    }
+    .brand h1 { margin: 0; font-size: var(--text-lg); }
+    .brand p { margin: 0; color: var(--color-text-muted); font-size: var(--text-sm); }
+    .actions { display:flex; gap: .75rem; align-items:center; }
+    .theme-toggle, .chip-btn {
+      border: 1px solid color-mix(in srgb, var(--color-text) 14%, transparent);
+      background: var(--color-surface);
+      color: var(--color-text);
+      border-radius: 999px;
+      padding: .72rem 1rem;
+      cursor: pointer;
+    }
+    main { padding: var(--space-8) 0 var(--space-12); }
+    .hero {
+      display:grid; grid-template-columns: 1.15fr .85fr; gap: var(--space-8); align-items: stretch;
+      margin-bottom: var(--space-8);
+    }
+    .hero-card, .panel {
+      background: color-mix(in srgb, var(--color-surface) 84%, transparent);
+      border: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-sm);
+    }
+    .hero-copy { padding: clamp(1.5rem, 3vw, 3rem); }
+    .eyebrow {
+      display:inline-flex; align-items:center; gap:.5rem; padding:.35rem .7rem; border-radius:999px;
+      background: color-mix(in srgb, var(--color-primary) 15%, transparent); color: var(--color-primary-hover); font-size: var(--text-xs); letter-spacing: .08em; text-transform: uppercase;
+    }
+    [data-theme="dark"] .eyebrow { color: var(--color-primary-hover); }
+    .hero h2 {
+      font-family: var(--font-display);
+      font-weight: 400;
+      font-size: var(--text-2xl);
+      line-height: .95;
+      margin: 1rem 0;
+      max-width: 11ch;
+    }
+    .hero-copy p { color: var(--color-text-muted); max-width: 62ch; }
+    .stats { display:grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1.5rem; }
+    .stat {
+      padding: 1rem; background: var(--color-surface-2); border-radius: var(--radius-lg);
+      border: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent);
+    }
+    .stat strong { display:block; font-size: 1.4rem; margin-bottom: .2rem; }
+    .hero-side { padding: 1.5rem; display:flex; flex-direction:column; gap: 1rem; justify-content:center; }
+    .legend { display:grid; gap:.75rem; }
+    .legend-item { display:flex; gap:.75rem; align-items:flex-start; }
+    .swatch { width:14px; height:14px; border-radius:4px; margin-top: .25rem; }
+    .grid {
+      display:grid; grid-template-columns: 1.2fr .8fr; gap: var(--space-8);
+    }
+    .panel { overflow: hidden; }
+    .panel-header {
+      display:flex; justify-content:space-between; align-items:flex-start; gap:1rem;
+      padding: 1.15rem 1.25rem;
+      border-bottom: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent);
+    }
+    .panel-header h3 { margin:0; font-size: var(--text-lg); }
+    .panel-header p { margin:.3rem 0 0; color: var(--color-text-muted); font-size: var(--text-sm); max-width: 60ch; }
+    .controls {
+      display:flex; flex-wrap:wrap; gap:.6rem; padding: 1rem 1.25rem; border-bottom:1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
+      background: color-mix(in srgb, var(--color-surface-2) 65%, transparent);
+    }
+    .controls label { display:flex; align-items:center; gap:.5rem; padding:.55rem .8rem; border-radius:999px; background: var(--color-surface); border:1px solid color-mix(in srgb, var(--color-text) 10%, transparent); }
+    .controls input[type="range"] { width: 150px; }
+    #map { height: 660px; width: 100%; background: var(--color-surface-offset); }
+    .info {
+      padding: 1rem 1.25rem 1.25rem;
+      display:grid; grid-template-columns: repeat(3, 1fr); gap: .9rem;
+      border-top:1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
+    }
+    .info-card { background: var(--color-surface-2); padding: .95rem; border-radius: var(--radius-md); }
+    .info-card span { display:block; font-size: var(--text-xs); letter-spacing:.05em; text-transform:uppercase; color: var(--color-text-faint); margin-bottom: .25rem; }
+    .side-stack { display:grid; gap: var(--space-8); }
+    .diagram-wrap { padding: 1rem 1.25rem 1.5rem; }
+    .diagram-caption { color: var(--color-text-muted); font-size: var(--text-sm); margin-bottom: .75rem; }
+    svg text { font-family: var(--font-body); }
+    .note-list { padding: 1rem 1.25rem 1.5rem; display:grid; gap: .8rem; }
+    .note {
+      padding: .9rem 1rem; border-radius: var(--radius-md); background: var(--color-surface-2);
+      border-left: 3px solid color-mix(in srgb, var(--color-primary) 65%, transparent);
+    }
+    .sourcebox { padding: 1rem 1.25rem 1.4rem; color: var(--color-text-muted); font-size: var(--text-sm); }
+    .sourcebox code { font-size: .92em; }
+    .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+      background: var(--color-surface);
+      color: var(--color-text);
+    }
+    .leaflet-container a { color: var(--color-primary); }
+    .region-btns { display:flex; flex-wrap:wrap; gap:.55rem; }
+    .region-btns button {
+      border:1px solid color-mix(in srgb, var(--color-text) 12%, transparent); background:var(--color-surface);
+      color:var(--color-text); padding:.55rem .8rem; border-radius:999px; cursor:pointer;
+    }
+    .region-btns button.active, .chip-btn.active { background: var(--color-primary); color: var(--color-text-inverse); border-color: transparent; }
+    footer { padding: 0 0 var(--space-12); color: var(--color-text-muted); }
+    @media (max-width: 1100px) {
+      .hero, .grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 720px) {
+      .shell { width: min(100% - 1rem, 100%); }
+      .topbar { align-items:flex-start; flex-direction:column; }
+      .stats, .info { grid-template-columns: 1fr; }
+      #map { height: 500px; }
+      .controls { align-items:flex-start; }
+      .controls label { width: 100%; justify-content: space-between; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="shell topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+            <path d="M12 2C9 5 7 7.7 7 11a5 5 0 0 0 10 0c0-3.3-2-6-5-9Z"></path>
+            <path d="M8 15c1.8 1.8 5.7 1.8 8 0"></path>
+          </svg>
+        </div>
+        <div>
+          <h1>Biocultural Overlap Explorer</h1>
+          <p>Map of biodiversity hotspots and endangered language zones, paired with a cascading extinction model.</p>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="chip-btn" id="resetView">Reset view</button>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">Theme</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <article class="hero-card hero-copy">
+        <span class="eyebrow">Biocultural risk atlas</span>
+        <h2>Where ecological loss and language endangerment converge</h2>
+        <p>This prototype combines a world map with a conceptual timeline so you can present biodiversity hotspots alongside endangered language concentration zones. It is designed as an advocacy-focused interactive rather than a GIS-grade scientific atlas.</p>
+        <div class="stats">
+          <div class="stat"><strong>36</strong><span>recognized biodiversity hotspots used as the framing model</span></div>
+          <div class="stat"><strong>3,202</strong><span>languages identified inside hotspot regions in the PNAS overlap analysis</span></div>
+          <div class="stat"><strong>~2,500</strong><span>endangered languages covered in UNESCO’s atlas tradition</span></div>
+        </div>
+      </article>
+      <aside class="hero-card hero-side">
+        <div>
+          <h3 style="margin:0 0 .75rem;">Visual key</h3>
+          <div class="legend">
+            <div class="legend-item"><span class="swatch" style="background: rgba(90,162,171,.42); border:1px solid rgba(90,162,171,.9);"></span><div><strong>Biodiversity hotspot envelope</strong><br><span style="color:var(--color-text-muted)">Illustrative regional polygons based on globally recognized hotspot geographies.</span></div></div>
+            <div class="legend-item"><span class="swatch" style="background: rgba(226,173,60,.9);"></span><div><strong>Endangered language clusters</strong><br><span style="color:var(--color-text-muted)">Weighted circles indicate advocacy-scale concentration zones, not exact language-by-language counts.</span></div></div>
+            <div class="legend-item"><span class="swatch" style="background: rgba(112,86,184,.95);"></span><div><strong>High-overlap callouts</strong><br><span style="color:var(--color-text-muted)">Regions repeatedly cited as especially rich in both biodiversity and linguistic diversity.</span></div></div>
+          </div>
+        </div>
+        <div class="region-btns" id="regionButtons"></div>
+      </aside>
+    </section>
+
+    <section class="grid">
+      <article class="panel">
+        <div class="panel-header">
+          <div>
+            <h3>Interactive map</h3>
+            <p>Toggle hotspot envelopes, endangered language clusters, and overlap markers. Use the intensity slider to scale cluster emphasis for presentation screenshots.</p>
+          </div>
+        </div>
+        <div class="controls">
+          <label><input type="checkbox" id="toggleHotspots" checked> Show hotspot envelopes</label>
+          <label><input type="checkbox" id="toggleLanguages" checked> Show language clusters</label>
+          <label><input type="checkbox" id="toggleOverlap" checked> Show overlap callouts</label>
+          <label>Cluster scale <input type="range" id="sizeSlider" min="0.6" max="1.8" step="0.1" value="1"></label>
+        </div>
+        <div id="map" aria-label="Map of biodiversity hotspots and endangered language zones"></div>
+        <div class="info">
+          <div class="info-card"><span>Reading mode</span><strong id="currentRegion">Global</strong></div>
+          <div class="info-card"><span>Focus logic</span><strong id="currentLogic">Combined hotspot and language risk</strong></div>
+          <div class="info-card"><span>Presentation note</span><strong id="currentNote">Illustrative synthesis for storytelling</strong></div>
+        </div>
+      </article>
+
+      <div class="side-stack">
+        <article class="panel">
+          <div class="panel-header">
+            <div>
+              <h3>Two-stage extinction process</h3>
+              <p>Biological decline often arrives first, while cultural and linguistic continuity can persist for a time before transmission collapses.</p>
+            </div>
+          </div>
+          <div class="diagram-wrap">
+            <div class="diagram-caption">Hover the milestones to inspect the sequence from ecological erosion to social rupture.</div>
+            <svg id="timelineDiagram" viewBox="0 0 760 420" width="100%" role="img" aria-label="Timeline diagram showing biological extinction leading into societal and linguistic extinction">
+              <defs>
+                <linearGradient id="bioGrad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stop-color="var(--color-primary)" />
+                  <stop offset="100%" stop-color="var(--color-coral)" />
+                </linearGradient>
+                <linearGradient id="socGrad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stop-color="var(--color-gold)" />
+                  <stop offset="100%" stop-color="var(--color-purple)" />
+                </linearGradient>
+              </defs>
+              <rect x="0" y="0" width="760" height="420" rx="22" fill="color-mix(in srgb, var(--color-surface-2) 90%, transparent)"></rect>
+              <g opacity="0.18" stroke="var(--color-text)" stroke-width="1">
+                <line x1="90" y1="80" x2="90" y2="340"></line>
+                <line x1="90" y1="340" x2="700" y2="340"></line>
+                <line x1="90" y1="145" x2="700" y2="145"></line>
+                <line x1="90" y1="210" x2="700" y2="210"></line>
+                <line x1="90" y1="275" x2="700" y2="275"></line>
+              </g>
+              <text x="24" y="88" fill="var(--color-text-muted)" font-size="14">Integrity</text>
+              <text x="651" y="376" fill="var(--color-text-muted)" font-size="14">Time</text>
+              <text x="110" y="54" fill="var(--color-primary)" font-size="20" font-weight="700">Stage 1: Biological extinction pressure</text>
+              <text x="420" y="54" fill="var(--color-gold)" font-size="20" font-weight="700">Stage 2: Societal and linguistic erosion</text>
+
+              <path d="M90 98 C170 110, 190 130, 245 180 S340 250, 395 282 S470 315, 540 325 S640 334, 700 336" fill="none" stroke="url(#bioGrad)" stroke-width="7" stroke-linecap="round"></path>
+              <path d="M90 112 C210 116, 250 118, 315 138 S395 172, 438 214 S500 286, 565 318 S640 334, 700 338" fill="none" stroke="url(#socGrad)" stroke-width="7" stroke-linecap="round" stroke-dasharray="0"></path>
+
+              <g fill="var(--color-bg)" stroke-width="3">
+                <circle class="node" data-title="Habitat degradation" data-body="Land conversion, fragmentation, and ecological simplification reduce biodiversity integrity first." cx="170" cy="122" r="9" stroke="var(--color-primary)"></circle>
+                <circle class="node" data-title="Species decline" data-body="Local extirpation and shrinking abundance weaken food webs, pollination, and place-based harvesting systems." cx="285" cy="208" r="9" stroke="var(--color-coral)"></circle>
+                <circle class="node" data-title="Livelihood disruption" data-body="Communities adapt to degraded ecologies through migration, altered livelihoods, or stronger dependence on dominant systems." cx="402" cy="248" r="9" stroke="var(--color-gold)"></circle>
+                <circle class="node" data-title="Transmission break" data-body="Ecological vocabulary, oral practice, and intergenerational teaching lose their everyday context." cx="520" cy="302" r="9" stroke="var(--color-gold)"></circle>
+                <circle class="node" data-title="Language shift" data-body="Smaller speaker communities become more vulnerable as dominant languages replace local use domains." cx="610" cy="330" r="9" stroke="var(--color-purple)"></circle>
+              </g>
+
+              <g fill="var(--color-text-muted)" font-size="14">
+                <text x="138" y="156">Ecological disruption</text>
+                <text x="250" y="233">Biodiversity loss</text>
+                <text x="376" y="232">Social adaptation</text>
+                <text x="484" y="287">Knowledge weakening</text>
+                <text x="586" y="312">Language endangerment</text>
+              </g>
+            </svg>
+            <div id="diagramTooltip" class="note" style="margin-top:1rem; display:none;"></div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-header">
+            <div>
+              <h3>Interpretive notes</h3>
+              <p>Use these as slide annotations, caption text, or panel labels around the interactive.</p>
+            </div>
+          </div>
+          <div class="note-list">
+            <div class="note">The map emphasizes co-occurrence, not precise causation. It shows where conservation and language revitalization concerns may warrant joint attention.</div>
+            <div class="note">The timeline is intentionally conceptual: biodiversity decline and cultural loss can overlap, loop, and vary by region, policy context, and community resilience.</div>
+            <div class="note">This format works well for grant decks, museum interactives, educational websites, and conservation storytelling pieces.</div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-header"><div><h3>Evidence anchors</h3><p>The wording in this prototype is based on established hotspot and endangered-language framing from conservation and UNESCO-linked sources.</p></div></div>
+          <div class="sourcebox">
+            <div><strong>Built-in source notes</strong></div>
+            <ul>
+              <li>Conservation International describes <strong>36 biodiversity hotspots</strong> and defines them by endemism plus severe habitat loss.</li>
+              <li>The 2012 PNAS overlap analysis reports <strong>3,202 languages</strong> within biodiversity hotspots and highlights East Melanesian Islands, Guinean Forests of West Africa, Indo-Burma, Mesoamerica, and Wallacea as especially language-rich.</li>
+              <li>UNESCO’s atlas tradition covers roughly <strong>2,500 endangered languages</strong> and uses interactive mapping to track vitality patterns.</li>
+            </ul>
+            <p style="margin-top:1rem;">This HTML is intentionally self-contained, so the map uses curated regional envelopes and cluster points rather than live GIS feeds.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="shell">Designed as an interactive presentation asset for biocultural conservation storytelling.</footer>
+
+  <script>
+    const hotspotRegions = [
+      {
+        id: 'mesoamerica',
+        name: 'Mesoamerica',
+        center: [15.8, -91.5],
+        zoom: 4,
+        logic: 'Tropical forest loss and language diversity overlap',
+        note: 'PNAS-highlighted hotspot with high indigenous language richness',
+        polygon: [[30,-118],[30,-74],[5,-74],[5,-118]],
+        language: { lat: 16, lng: -91, weight: 8, desc: 'Dense Mesoamerican endangered language arc.' },
+        overlap: { lat: 16, lng: -90, label: 'Mesoamerica', text: 'One of the hotspot regions identified as having more than 250 indigenous languages.' }
+      },
+      {
+        id: 'indo-burma',
+        name: 'Indo-Burma',
+        center: [19.5, 98.5],
+        zoom: 4,
+        logic: 'Forest conversion, upland diversity, and endangered language concentration',
+        note: 'Strong biocultural overlap across mainland Southeast Asia',
+        polygon: [[30,88],[30,110],[7,110],[7,88]],
+        language: { lat: 21, lng: 98, weight: 9, desc: 'High concentration of endangered language communities across the uplands.' },
+        overlap: { lat: 20, lng: 100, label: 'Indo-Burma', text: 'Named in the PNAS analysis as one of the most linguistically diverse hotspot regions.' }
+      },
+      {
+        id: 'wallacea',
+        name: 'Wallacea',
+        center: [-3.5, 123.5],
+        zoom: 5,
+        logic: 'Island endemism meets fragmented small-language geographies',
+        note: 'High archipelagic fragmentation heightens both ecological and linguistic risk',
+        polygon: [[6,116],[6,131],[-11,131],[-11,116]],
+        language: { lat: -3, lng: 123, weight: 8, desc: 'Many small-island speech communities occupy highly biodiverse terrain.' },
+        overlap: { lat: -2, lng: 124, label: 'Wallacea', text: 'Highlighted as a hotspot with exceptionally high indigenous language counts.' }
+      },
+      {
+        id: 'east-melanesia',
+        name: 'East Melanesian Islands',
+        center: [-7.5, 156.5],
+        zoom: 5,
+        logic: 'Extreme language density in island biodiversity systems',
+        note: 'Among the clearest examples of biocultural concentration',
+        polygon: [[-2,150],[-2,163],[-14,163],[-14,150]],
+        language: { lat: -7.4, lng: 156.2, weight: 10, desc: 'Very high linguistic density associated with island biocultural diversity.' },
+        overlap: { lat: -8, lng: 156.5, label: 'East Melanesian Islands', text: 'One of the most language-dense hotspot regions in the published overlap analysis.' }
+      },
+      {
+        id: 'guinean-forests',
+        name: 'Guinean Forests of West Africa',
+        center: [8.8, -8.5],
+        zoom: 5,
+        logic: 'Forest refugia and dense cultural-linguistic mosaics',
+        note: 'High diversity zone under heavy land-use pressure',
+        polygon: [[14,-18],[14,3],[0,3],[0,-18]],
+        language: { lat: 8.5, lng: -9, weight: 8, desc: 'Clustered endangered language geographies across forest and upland zones.' },
+        overlap: { lat: 8.7, lng: -8.8, label: 'Guinean Forests', text: 'Another hotspot noted for more than 250 indigenous languages.' }
+      },
+      {
+        id: 'new-guinea',
+        name: 'New Guinea region',
+        center: [-5.6, 141.5],
+        zoom: 5,
+        logic: 'World-leading language richness embedded in tropical mountain and forest systems',
+        note: 'A biocultural epicenter adjacent to hotspot framing',
+        polygon: [[1,130],[1,152],[-11,152],[-11,130]],
+        language: { lat: -5.8, lng: 142, weight: 10, desc: 'Globally dense concentration of small-language communities.' },
+        overlap: { lat: -5.5, lng: 141.6, label: 'New Guinea', text: 'An iconic biocultural diversity region often central to language-biodiversity discussions.' }
+      },
+      {
+        id: 'madagascar',
+        name: 'Madagascar & Indian Ocean Islands',
+        center: [-19.2, 47.6],
+        zoom: 5,
+        logic: 'High endemism and island fragility',
+        note: 'Useful comparative case for biodiversity-loss storytelling',
+        polygon: [[-11,42],[-11,56],[-27,56],[-27,42]],
+        language: { lat: -18.5, lng: 47.5, weight: 5, desc: 'Lower point density here, but strong ecological vulnerability.' },
+        overlap: { lat: -19.2, lng: 47.6, label: 'Madagascar', text: 'A clear biodiversity hotspot that broadens the geographic narrative of the map.' }
+      }
+    ];
+
+    const map = L.map('map', { zoomControl: true, worldCopyJump: true }).setView([12, 10], 2);
+    const tile = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    const hotspotsLayer = L.layerGroup().addTo(map);
+    const languagesLayer = L.layerGroup().addTo(map);
+    const overlapLayer = L.layerGroup().addTo(map);
+
+    let circleScale = 1;
+
+    function drawLayers() {
+      hotspotsLayer.clearLayers();
+      languagesLayer.clearLayers();
+      overlapLayer.clearLayers();
+
+      hotspotRegions.forEach(region => {
+        const polygon = L.polygon(region.polygon, {
+          color: getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim(),
+          weight: 1.5,
+          fillColor: getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim(),
+          fillOpacity: 0.18
+        }).bindPopup(`<strong>${region.name}</strong><br>${region.note}`);
+
+        const circle = L.circleMarker([region.language.lat, region.language.lng], {
+          radius: 8 + region.language.weight * circleScale,
+          color: getComputedStyle(document.documentElement).getPropertyValue('--color-gold').trim(),
+          fillColor: getComputedStyle(document.documentElement).getPropertyValue('--color-gold').trim(),
+          fillOpacity: 0.7,
+          weight: 1.5
+        }).bindPopup(`<strong>${region.name}</strong><br>${region.language.desc}`);
+
+        const overlap = L.circleMarker([region.overlap.lat, region.overlap.lng], {
+          radius: 7,
+          color: getComputedStyle(document.documentElement).getPropertyValue('--color-purple').trim(),
+          fillColor: getComputedStyle(document.documentElement).getPropertyValue('--color-purple').trim(),
+          fillOpacity: 0.92,
+          weight: 1.5
+        }).bindPopup(`<strong>${region.overlap.label}</strong><br>${region.overlap.text}`);
+
+        polygon.regionId = region.id;
+        circle.regionId = region.id;
+        overlap.regionId = region.id;
+
+        if (document.getElementById('toggleHotspots').checked) polygon.addTo(hotspotsLayer);
+        if (document.getElementById('toggleLanguages').checked) circle.addTo(languagesLayer);
+        if (document.getElementById('toggleOverlap').checked) overlap.addTo(overlapLayer);
+      });
+    }
+
+    function focusRegion(region) {
+      map.flyTo(region.center, region.zoom, { duration: 1.2 });
+      document.getElementById('currentRegion').textContent = region.name;
+      document.getElementById('currentLogic').textContent = region.logic;
+      document.getElementById('currentNote').textContent = region.note;
+      document.querySelectorAll('.region-btns button').forEach(btn => btn.classList.toggle('active', btn.dataset.region === region.id));
+    }
+
+    function buildRegionButtons() {
+      const holder = document.getElementById('regionButtons');
+      const globalBtn = document.createElement('button');
+      globalBtn.textContent = 'Global';
+      globalBtn.className = 'active';
+      globalBtn.addEventListener('click', () => resetView());
+      holder.appendChild(globalBtn);
+
+      hotspotRegions.forEach(region => {
+        const btn = document.createElement('button');
+        btn.textContent = region.name;
+        btn.dataset.region = region.id;
+        btn.addEventListener('click', () => focusRegion(region));
+        holder.appendChild(btn);
+      });
+    }
+
+    function resetView() {
+      map.flyTo([12, 10], 2, { duration: 1.1 });
+      document.getElementById('currentRegion').textContent = 'Global';
+      document.getElementById('currentLogic').textContent = 'Combined hotspot and language risk';
+      document.getElementById('currentNote').textContent = 'Illustrative synthesis for storytelling';
+      document.querySelectorAll('.region-btns button').forEach((btn, i) => btn.classList.toggle('active', i === 0));
+    }
+
+    ['toggleHotspots','toggleLanguages','toggleOverlap'].forEach(id => {
+      document.getElementById(id).addEventListener('change', drawLayers);
+    });
+
+    document.getElementById('sizeSlider').addEventListener('input', (e) => {
+      circleScale = parseFloat(e.target.value);
+      drawLayers();
+    });
+
+    document.getElementById('resetView').addEventListener('click', resetView);
+
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      const root = document.documentElement;
+      root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+      drawLayers();
+    });
+
+    document.querySelectorAll('.node').forEach(node => {
+      node.addEventListener('mouseenter', () => {
+        const tip = document.getElementById('diagramTooltip');
+        tip.style.display = 'block';
+        tip.innerHTML = `<strong>${node.dataset.title}</strong><br>${node.dataset.body}`;
+      });
+      node.addEventListener('mouseleave', () => {
+        const tip = document.getElementById('diagramTooltip');
+        tip.style.display = 'none';
+      });
+      node.addEventListener('click', () => {
+        const tip = document.getElementById('diagramTooltip');
+        tip.style.display = 'block';
+        tip.innerHTML = `<strong>${node.dataset.title}</strong><br>${node.dataset.body}`;
+      });
+    });
+
+    buildRegionButtons();
+    drawLayers();
+    resetView();
+  </script>
+</body>
+</html>
